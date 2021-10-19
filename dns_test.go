@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"gitub.com/russtone/dnsutils"
+	"github.com/russtone/dnsutils"
 )
 
 func TestResolver(t *testing.T) {

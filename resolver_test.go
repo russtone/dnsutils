@@ -32,27 +32,22 @@ func TestResolver(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
+	done := 0
+	results := make([]dnsutils.Result, 0)
+
 	go func() {
 		defer wg.Done()
 
 		var (
-			res  dnsutils.Result
-			err  error
-			done int
+			res dnsutils.Result
+			err error
 		)
 
 		for r.Next(&res, &err) {
 			done++
-
-			for _, tt := range tests {
-				if tt.name == res.Name {
-					res.SortAnswers()
-					assert.EqualValues(t, tt.results, res.Answers)
-				}
-			}
+			res.SortAnswers()
+			results = append(results, res)
 		}
-
-		assert.Equal(t, len(tests), done)
 	}()
 
 	for _, tt := range tests {
@@ -61,6 +56,15 @@ func TestResolver(t *testing.T) {
 
 	r.Wait()
 	r.Close()
-
 	wg.Wait()
+
+	assert.Equal(t, len(tests), done)
+
+	for _, tt := range tests {
+		for _, res := range results {
+			if tt.name == res.Name {
+				assert.EqualValues(t, tt.results, res.Answers)
+			}
+		}
+	}
 }

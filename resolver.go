@@ -128,9 +128,9 @@ type resolver struct {
 }
 
 // NewResolver creates new resolver instance using provided servers and options.
-func NewResolver(servers []net.IP, workersCount int, rateLimit float64, capacity int) Resolver {
+func NewResolver(servers []net.IP, workersCount, rateLimit, capacity int) Resolver {
 	r := &resolver{
-		pool: NewPool(servers, rateLimit),
+		pool: NewPool(servers, rateLimit, workersCount),
 	}
 
 	queue := jobq.New(r.do, workersCount, capacity)
@@ -146,15 +146,9 @@ func (r *resolver) do(task jobq.Task) (jobq.Result, error) {
 	}
 
 	server := r.pool.Take()
-
-	defer func() {
-		r.pool.Release(server)
-	}()
-
 	qtype := t.qtype()
 
 	answer, err := server.Query(t.Name, qtype)
-
 	if err != nil {
 		return nil, jobq.Retry(err)
 	}

@@ -1,6 +1,7 @@
 package dnsutils
 
 import (
+	"math/rand"
 	"net"
 	"time"
 )
@@ -41,47 +42,91 @@ func (s *Server) Rate() float64 {
 	return float64(s.queriesCount) / time.Since(s.createdAt).Seconds()
 }
 
-// Delay returns the time to wait to slow down the request Rate to required limit.
-func (s *Server) Delay(rateLimit float64) time.Duration {
-	return time.Duration(1/rateLimit)*time.Second - time.Since(s.lastUsedAt)
-}
-
 // Pool represents Pool of DNS servers.
 type Pool struct {
+	// servers are list of available DNS servers..
+	servers []*Server
 
-	// Ready DNS servers.
-	servers chan *Server
+	// ready is channel of ready to use servers.
+	ready chan *Server
 
-	// Rate limit (queries per second) for servers in Pool.
-	rateLimit float64
+	// rate is rate limit (query per second)
+	rate int
+
+	// ticker internal time.Ticker using for refill.
+	ticker *time.Ticker
+
+	// stop signal channel to stop refill.
+	stop chan struct{}
+
+	// rnd random.
+	rnd *rand.Rand
 }
 
-// NewPool creates new DNS servers Pool.
-func NewPool(ips []net.IP, rateLimit float64) *Pool {
-	servers := make(chan *Server, len(ips))
+// NewPool returns new instane of Pool.
+func NewPool(ips []net.IP, rate int, capacity int) *Pool {
+	servers := make([]*Server, 0)
+	ready := make(chan *Server, capacity)
+	mincap := rate * len(ips)
+
+	// guard
+	if capacity < mincap {
+		capacity = mincap
+	}
 
 	for _, ip := range ips {
-		servers <- &Server{IP: ip, createdAt: time.Now()}
+		servers = append(servers, &Server{IP: ip, createdAt: time.Now()})
+	}
+
+	for i := 0; i < mincap; i++ {
+		ready <- servers[i%len(servers)]
 	}
 
 	return &Pool{
-		servers:   servers,
-		rateLimit: rateLimit,
+		servers: servers,
+		ready:   ready,
+		rate:    rate,
+		rnd:     rand.New(rand.NewSource(time.Now().Unix())),
 	}
+}
+
+// Start start internal refill goroutine.
+func (p *Pool) Start() {
+	p.ticker = time.NewTicker(time.Second)
+	p.stop = make(chan struct{})
+
+	defer close(p.stop)
+
+	for {
+		select {
+		case <-p.ticker.C:
+			p.fill()
+		case <-p.stop:
+			p.ticker.Stop()
+			return
+		}
+	}
+}
+
+// Stop stops internal refill goroutine.
+func (p *Pool) Stop() {
+	p.stop <- struct{}{}
+	<-p.stop
 }
 
 // Take returns ready DNS Server from Pool.
 func (p *Pool) Take() *Server {
-	return <-p.servers
+	return <-p.ready
 }
 
-// Release returns the Server to the Pool.
-func (p *Pool) Release(s *Server) {
-	go func() {
-		if delay := s.Delay(p.rateLimit); delay > 0 {
-			time.Sleep(delay)
+// fill fills ready servers.
+func (p *Pool) fill() {
+	for i := 0; i < p.rate; i++ {
+		for _, j := range p.rnd.Perm(len(p.servers)) {
+			select {
+			case p.ready <- p.servers[j]:
+			default:
+			}
 		}
-
-		p.servers <- s
-	}()
+	}
 }

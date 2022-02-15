@@ -128,13 +128,12 @@ type resolver struct {
 }
 
 // NewResolver creates new resolver instance using provided servers and options.
-func NewResolver(servers []net.IP, workersCount, rateLimit, capacity int) Resolver {
+func NewResolver(servers []net.IP, workersCount, rateLimit int) Resolver {
 	r := &resolver{
 		pool: NewPool(servers, rateLimit, workersCount),
 	}
 
-	queue := jobq.New(r.do, workersCount, capacity)
-	r.Queue = queue
+	r.Queue = jobq.New(r.do, workersCount, workersCount*2)
 
 	return r
 }

@@ -1,6 +1,7 @@
 package dnsutils
 
 import (
+	"fmt"
 	"math/rand"
 	"net"
 	"time"
@@ -64,15 +65,23 @@ type Pool struct {
 }
 
 // NewPool returns new instane of Pool.
-func NewPool(ips []net.IP, rate int, capacity int) *Pool {
+func NewPool(ips []net.IP, rate, capacity int) *Pool {
+	if rate <= 0 {
+		panic(fmt.Sprintf("rate is %d", rate))
+	}
+
+	if len(ips) == 0 {
+		panic("empty ips")
+	}
+
 	servers := make([]*Server, 0)
-	ready := make(chan *Server, capacity)
 	mincap := rate * len(ips)
 
-	// guard
 	if capacity < mincap {
 		capacity = mincap
 	}
+
+	ready := make(chan *Server, capacity)
 
 	for _, ip := range ips {
 		servers = append(servers, &Server{IP: ip, createdAt: time.Now()})

@@ -51,8 +51,8 @@ var (
 	}
 )
 
-// Query returns DNS query result for the given name using given NS.
-func Query(name string, ns net.IP, qtype string) ([]string, error) {
+// Query returns DNS Query result for the given name using given NS.
+func Query(ip net.IP, name, qtype string) ([]string, error) {
 
 	if len(name) == 0 {
 		return nil, errors.New("empty name")
@@ -65,7 +65,7 @@ func Query(name string, ns net.IP, qtype string) ([]string, error) {
 	var typ uint16
 
 	if t, ok := qtypeMap[qtype]; !ok {
-		return nil, errors.New("invalid query type")
+		return nil, errors.New("invalid Query type")
 	} else {
 		typ = t
 	}
@@ -84,7 +84,7 @@ func Query(name string, ns net.IP, qtype string) ([]string, error) {
 		},
 	}
 
-	in, _, err := DefaultClient.Exchange(msg, getAddr(ns))
+	in, _, err := DefaultClient.Exchange(msg, getAddr(ip))
 	if err != nil {
 		return nil, err
 	}

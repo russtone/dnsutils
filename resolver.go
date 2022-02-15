@@ -16,16 +16,16 @@ type Task struct {
 	// Name is a DNS name to resolve.
 	Name string
 
-	// Qtypes is a list of query types to use.
+	// Qtypes is a list of Query types to use.
 	Qtypes []string
 
-	// Meta is meta data which will be copied to result.
+	// Meta is metadata which will be copied to result.
 	Meta map[string]interface{}
 
-	// answers is a DNS queries answers (map from query type to answers for this query type).
+	// answers is a DNS queries answers (map from Query type to answer for this Query type).
 	answers map[string][]string
 
-	// qtypeIdx is a current query type.
+	// qtypeIdx is a current Query type.
 	qtypeIdx int
 }
 
@@ -37,7 +37,7 @@ func (t *Task) done() bool {
 	return len(t.answers) == len(t.Qtypes)
 }
 
-// qtype returns current query type.
+// qtype returns current Query type.
 func (t *Task) qtype() string {
 	if t.qtypeIdx > len(t.Qtypes) {
 		panic("Invalid qtype intex")
@@ -60,7 +60,7 @@ type Result struct {
 	// Name is a resolved DNS name.
 	Name string
 
-	// Answers is a map from query type to list of results.
+	// Answers is a map from Query type to list of results.
 	Answers map[string][]string
 
 	// Meta is a meta data copied from Task.
@@ -122,7 +122,7 @@ var _ Resolver = new(resolver)
 
 // resolver represents DNS resolver.
 type resolver struct {
-	pool *pool
+	pool *Pool
 
 	jobq.Queue
 }
@@ -130,7 +130,7 @@ type resolver struct {
 // NewResolver creates new resolver instance using provided servers and options.
 func NewResolver(servers []net.IP, workersCount int, rateLimit float64, capacity int) Resolver {
 	r := &resolver{
-		pool: newPool(servers, rateLimit),
+		pool: NewPool(servers, rateLimit),
 	}
 
 	queue := jobq.New(r.do, workersCount, capacity)
@@ -145,15 +145,15 @@ func (r *resolver) do(task jobq.Task) (jobq.Result, error) {
 		panic("invalid task type")
 	}
 
-	server := r.pool.take()
+	server := r.pool.Take()
 
 	defer func() {
-		r.pool.release(server)
+		r.pool.Release(server)
 	}()
 
 	qtype := t.qtype()
 
-	answer, err := server.query(t.Name, qtype)
+	answer, err := server.Query(t.Name, qtype)
 
 	if err != nil {
 		return nil, jobq.Retry(err)

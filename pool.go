@@ -5,30 +5,29 @@ import (
 	"time"
 )
 
-// server represents DNS server.
-type server struct {
-	// IP address of the server.
-	ip net.IP
+// Server represents DNS Server.
+type Server struct {
+	// IP address of the Server.
+	IP net.IP
 
-	// Count of processed queries.
+	// queriesCount of processed queries.
 	queriesCount int
 
-	// Creation time.
+	// createdAt is time of creation.
 	createdAt time.Time
 
-	// Last usage time.
+	// lastUsedAt is time of last usage.
 	lastUsedAt time.Time
 }
 
-// query makes DNS-query and returns its result.
-func (s *server) query(name string, qtype string) ([]string, error) {
-
+// Query makes DNS query and returns its result.
+func (s *Server) Query(name string, qtype string) ([]string, error) {
 	defer func() {
 		s.queriesCount++
 		s.lastUsedAt = time.Now()
 	}()
 
-	res, err := Query(name, s.ip, qtype)
+	res, err := Query(s.IP, name, qtype)
 
 	if err != nil {
 		return nil, err
@@ -37,49 +36,49 @@ func (s *server) query(name string, qtype string) ([]string, error) {
 	return res, err
 }
 
-// rate returns average queries per second for the server.
-func (s *server) rate() float64 {
-	return float64(s.queriesCount) / float64(time.Since(s.createdAt).Seconds())
+// Rate returns average queries per second for the Server.
+func (s *Server) Rate() float64 {
+	return float64(s.queriesCount) / time.Since(s.createdAt).Seconds()
 }
 
-// delay returns the time to wait to slow down the request rate to required limit.
-func (s *server) delay(rateLimit float64) time.Duration {
+// Delay returns the time to wait to slow down the request Rate to required limit.
+func (s *Server) Delay(rateLimit float64) time.Duration {
 	return time.Duration(1/rateLimit)*time.Second - time.Since(s.lastUsedAt)
 }
 
-// pool represents pool of DNS servers.
-type pool struct {
+// Pool represents Pool of DNS servers.
+type Pool struct {
 
 	// Ready DNS servers.
-	servers chan *server
+	servers chan *Server
 
-	// Rate limit (queries per second) for servers in pool.
+	// Rate limit (queries per second) for servers in Pool.
 	rateLimit float64
 }
 
-// newPool creates new DNS servers pool.
-func newPool(ips []net.IP, rateLimit float64) *pool {
-	servers := make(chan *server, len(ips))
+// NewPool creates new DNS servers Pool.
+func NewPool(ips []net.IP, rateLimit float64) *Pool {
+	servers := make(chan *Server, len(ips))
 
 	for _, ip := range ips {
-		servers <- &server{ip: ip, createdAt: time.Now()}
+		servers <- &Server{IP: ip, createdAt: time.Now()}
 	}
 
-	return &pool{
+	return &Pool{
 		servers:   servers,
 		rateLimit: rateLimit,
 	}
 }
 
-// take returns ready DNS server from pool.
-func (p *pool) take() *server {
+// Take returns ready DNS Server from Pool.
+func (p *Pool) Take() *Server {
 	return <-p.servers
 }
 
-// release returns the server to the pool.
-func (p *pool) release(s *server) {
+// Release returns the Server to the Pool.
+func (p *Pool) Release(s *Server) {
 	go func() {
-		if delay := s.delay(p.rateLimit); delay > 0 {
+		if delay := s.Delay(p.rateLimit); delay > 0 {
 			time.Sleep(delay)
 		}
 

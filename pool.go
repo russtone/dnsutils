@@ -59,7 +59,7 @@ type Pool struct {
 	// stop signal channel to stop refill.
 	stop chan struct{}
 
-	// rnd random.
+	// rnd is random.
 	rnd *rand.Rand
 }
 
@@ -95,23 +95,26 @@ func (p *Pool) Start() {
 	p.ticker = time.NewTicker(time.Second)
 	p.stop = make(chan struct{})
 
-	defer close(p.stop)
+	go func() {
+		defer close(p.stop)
 
-	for {
-		select {
-		case <-p.ticker.C:
-			p.fill()
-		case <-p.stop:
-			p.ticker.Stop()
-			return
+		for {
+			select {
+			case <-p.ticker.C:
+				p.fill()
+			case <-p.stop:
+				p.ticker.Stop()
+				return
+			}
 		}
-	}
+	}()
 }
 
-// Stop stops internal refill goroutine.
-func (p *Pool) Stop() {
+// Close closes all internal resources.
+func (p *Pool) Close() {
 	p.stop <- struct{}{}
 	<-p.stop
+	close(p.ready)
 }
 
 // Take returns ready DNS Server from Pool.
@@ -121,10 +124,12 @@ func (p *Pool) Take() *Server {
 
 // fill fills ready servers.
 func (p *Pool) fill() {
+	n := len(p.servers)
 	for i := 0; i < p.rate; i++ {
-		for _, j := range p.rnd.Perm(len(p.servers)) {
+		off := p.rnd.Intn(len(p.servers))
+		for j := 0; j < n; j++ {
 			select {
-			case p.ready <- p.servers[j]:
+			case p.ready <- p.servers[(off+j)%n]:
 			default:
 			}
 		}

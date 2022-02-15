@@ -139,6 +139,18 @@ func NewResolver(servers []net.IP, workersCount, rateLimit, capacity int) Resolv
 	return r
 }
 
+// Start allows resolver to implement Resolver interface.
+func (r *resolver) Start() {
+	r.pool.Start()
+	r.Queue.Start()
+}
+
+// Close allows resolver to implement TaskGroup interface.
+func (r *resolver) Close() {
+	r.pool.Close()
+	r.Queue.Close()
+}
+
 func (r *resolver) do(task jobq.Task) (jobq.Result, error) {
 	t, ok := task.(*Task)
 	if !ok {

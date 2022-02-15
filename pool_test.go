@@ -18,7 +18,7 @@ func TestPool(t *testing.T) {
 	}
 
 	pool := dnsutils.NewPool(servers, 5, 15)
-	go pool.Start()
+	pool.Start()
 
 	ss := make([]*dnsutils.Server, 0)
 	stop := make(chan struct{})
@@ -31,7 +31,8 @@ func TestPool(t *testing.T) {
 		for {
 			select {
 			case <-ticks:
-				ss = append(ss, pool.Take())
+				s := pool.Take()
+				ss = append(ss, s)
 			case <-timeout:
 				return
 			}
@@ -40,7 +41,7 @@ func TestPool(t *testing.T) {
 
 	<-stop
 
-	pool.Stop()
+	pool.Close()
 
 	assert.GreaterOrEqual(t, len(ss), 30)
 	assert.LessOrEqual(t, len(ss), 40)

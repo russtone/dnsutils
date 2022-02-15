@@ -25,7 +25,7 @@ func TestResolver(t *testing.T) {
 		[]net.IP{
 			net.ParseIP("1.1.1.1"),
 			net.ParseIP("8.8.8.8"),
-		}, 2, 1, 2)
+		}, 2, 1)
 
 	r.Start()
 

@@ -29,7 +29,7 @@ func TestQuery(t *testing.T) {
 			"ns3.google.com",
 			"ns4.google.com",
 		}},
-		{"_spf.yandex.ru", "TXT", []string{"v=spf1 include:_spf-ipv4.yandex.ru include:_spf-ipv6.yandex.ru ~all"}},
+		{"_spf.yandex.ru", "TXT", []string{"v=spf1 include:_spf-ipv4.yandex.ru include:_spf-ipv6.yandex.ru include:_spf-ipv4-yc.yandex.ru ~all"}},
 		{"_caldavs._tcp.yandex.ru", "SRV", []string{"caldav.yandex.ru"}},
 		{"www.twitter.com", "CNAME", []string{"twitter.com"}},
 		{dnsutils.PTR(net.ParseIP("1.1.1.1")), "PTR", []string{"one.one.one.one"}},

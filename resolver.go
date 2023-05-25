@@ -88,10 +88,12 @@ func (r *Result) IsEmpty() bool {
 	return count == 0
 }
 
+type Meta map[string]interface{}
+
 // TaskGroup represents group of DNS resolve to process.
 type TaskGroup interface {
 	// Add adds task to group.
-	Add(name string, qtypes []string, meta map[string]interface{})
+	Add(name string, qtypes []string, meta Meta)
 
 	// Next returns next task Result or error.
 	Next(*Result, *error) bool
@@ -180,7 +182,7 @@ func (r *resolver) do(task jobq.Task) (jobq.Result, error) {
 }
 
 // Add allows resolver to implement TaskGroup interface.
-func (r *resolver) Add(name string, qtypes []string, meta map[string]interface{}) {
+func (r *resolver) Add(name string, qtypes []string, meta Meta) {
 	add(r.Queue, name, qtypes, meta)
 }
 
@@ -193,7 +195,7 @@ type group struct {
 	jobq.TaskGroup
 }
 
-func (g *group) Add(name string, qtypes []string, meta map[string]interface{}) {
+func (g *group) Add(name string, qtypes []string, meta Meta) {
 	add(g.TaskGroup, name, qtypes, meta)
 }
 
@@ -205,7 +207,7 @@ func (r *resolver) Group() TaskGroup {
 	return &group{r.Queue.Group()}
 }
 
-func add(q jobq.TaskGroup, name string, qtypes []string, meta map[string]interface{}) {
+func add(q jobq.TaskGroup, name string, qtypes []string, meta Meta) {
 	q.Add(&Task{
 		Name:     name,
 		Qtypes:   qtypes,
